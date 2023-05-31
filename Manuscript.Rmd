@@ -1,0 +1,550 @@
+---
+title             : "An Introduction to Bayesian Data Analysis for Sport Scientists"
+shorttitle        : "Introducing BDA"
+
+author: 
+  - name: Jorge R Fernandez-Santos
+    affiliation: "1,2"
+    corresponding: yes
+    address: Deparment of Physical Education, Faculty of Education Sciences, University of Cádiz, 11519, Puerto Real, Spain.
+    email: jorgedelrosario.fernandez@uca.es
+  - name: Jesus G Ponce-Gonzalez
+    affiliation: "2,3"
+  - name: Jose Castro-Piñero
+    affiliation: "1,2"
+  - name: Jose Luis Gonzalez-Montesinos
+    affiliation: 4
+
+affiliation:
+  - id: 1
+    institution: GALENO reasearch group, Faculty of Education Sciences, University of Cádiz, Cádiz, Spain.
+  - id: 2
+    institution: Biomedical Research and Innovation Institute of Cádiz (INiBICA) Research Unit, Cádiz, Spain.
+  - id: 3
+    institution: MOVE-IT reasearch group, Faculty of Education Sciences, University of Cádiz, Cádiz, Spain
+  - id: 4
+    institution: Deparment of Physical Education, Faculty of Education Sciences, University of Cádiz, Cádiz, Spain.
+    
+abstract: |
+
+  There is a concern in scientific research about the misuse and misinterpretation of traditional methods of statistical inference based on confidence intervals and p-values. As an alternative, Bayesian data analysis (BDA) is a method that uses probability to quantify uncertainty in inferences based on statistical data analysis. However, current sports scientists are not trained in BDA despite the fact that easy-to-use software like the R package brms makes BDA an accessible tool. Therefore, this manuscript introduces different key concepts like the Bayes` rule, hierarchical modeling, Markov Chain Monte Carlo techniques, Bayesian workflow, and sensitivity analysis. In addition, an example of BDA using brms is also performed to help sports scientists understand how to apply the previous concepts from a practical point of view and how to interpret and report the obtained results.
+    
+keywords: Bayesian data analysis, statistical modeling, Sport Science.
+
+#wordcount         : "X"
+
+bibliography      : "bayesian.bib"
+csl               : "apa.csl"
+
+floatsintext      : no
+linenumbers       : yes
+draft             : no
+mask              : no
+
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+
+classoption       : "man"
+output            : papaja::apa6_pdf
+
+header-includes:
+  - \usepackage{amsmath}
+---
+
+```{r setup, include = FALSE}
+library(papaja)
+library(tidyverse)
+library(ggpubr)
+library(brms)
+library(bayestestR)
+library(effsize)
+library(tidybayes)
+library(bayesplot)
+library(posterior) 
+library(RColorBrewer) 
+library(kableExtra)
+r_refs("bayesian.bib")
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(7)
+knitr::opts_chunk$set(echo = F)
+```
+
+# __1. Introduction__
+BDA is already a well-established method of statistical inference in many different disciplines like psychology, ecology, economy or health science [@greenbergIntroductionBayesianEconometrics2012; @kery2010introduction; @leeBayesianCognitiveModeling2014; @lesaffreBayesianBiostatistics2012]. Briefly, BDA make use of the probability for quantify uncertainty in inferences based on statistical data analysis [@gelmanBayesianDataAnalysis2013]. This approach has some advantages over the traditional methods (also known as frequentist statistics) like: 1) the incorporation of prior knowledge to the statistical model via prior distribution; 2) the result obtained is only based on the specific data under consideration; 3) regardless of model complexity the final estimation is always a posterior probability distribution not depend on the stopping or testing intentions of the analyst and 4) the straightforward interpretation of results [@dienes2018four; @kruschke2018bayesian; @wagenmakersBayesianInferencePsychology2018].
+
+Although the use of Bayesian statistics in sport analytics has increased substantially in the last years [@santos-fernandezBayesianStatisticsMeets2019], it has been argued recently that the current statistical practices in sport science are based on the null hypothesis significant testing under the frequentist approach and that this approach is flawless so sport scientists should shift towards alternative statistical methods [@bernardsCurrentResearchStatistical2017]. In fact, p-values and 95% confidence intervals commonly reported in the scientific literature are misinterpreted in Bayesian terms [@baldwin2017introduction; @mcelreathStatisticalRethinkingBayesian2020]. Another popular method of statistical analysis in sport science is the magnitude-based inference and it encourage the use of confidence intervals and effect sizes to make a decision about the true or population value of that effect statistic [@batterham2015case; @hopkins2018vindication]. However, this approach also has several problems like an incorrectly interpretation of frequentist statistics and an increasing risk of finding spurious effects, especially when using small samples [@sainani2018problem; @sainani2019magnitude]. Therefore, several authors have proposed the use of Bayesian statistics to overcome the aforementioned issues [@bernardsCurrentResearchStatistical2017; @borg2018bayesian]. Nevertheless, the major drawback is that most current sport scientists are not trained in BDA despite a wide range of popular statistical software already implements Bayesian computation.
+
+R is a programming language for statistical computing used by many scientists for which different packages have been developed in recent years for Bayesian modeling [@maiSoftwarePackagesBayesian2018]. Of all of them, the package brms gather some characteristics that make it an ideal starting point to learn BDA:  1) it is user-friendly; models are specified using lme4-like formula syntax; 2) It can be used to fit from single-level linear regression to multivariate or non-linear multilevel models; 3) It uses the probabilistic programming language Stan to fit the models; and 4) it has a large and growing user community [@burkner2017brms; @burknerAdvancedBayesianMultilevel2018].
+
+Therefore, the primary aim of this paper is to provide both theorical and practical introduction to BDA for sport scientists. There is no intention to be exhaustive rather to give an overview of the key concepts (highlighted in bold) and practical recommendations for data analysis. This paper is structured in two main sections: 1) a brief introduction to BDA fundamental ideas and 2) an application of the BDA workflow using an example. Excellent introductory texts like @kruschkeDoingBayesianData2014 or @mcelreathStatisticalRethinkingBayesian2020 are recommended to those readers who want to continue learning BDA after reading this manuscript. Throughout this paper it is only assumed that the reader is familiar with the regression analysis and the R programming language for data analysis (R Core Team, 2020). Manuscript's data and reproducible code can be found at https://github.com/JorgeDelro/Intro_Bayesian.
+
+# __2. Fundamentals of Bayesian data analysis__
+
+## __2.1. Bayes‘ theorem: the engine of Bayesian statistics__
+
+The core idea of Bayesian inference is to draw a probabilistic estimate of the parameters of the statistical model (posterior) by combining all the background knowledge (priors) with the new data obtained (likelihood). This process is obtained via Bayes‘ theorem and it generates a reallocation of credibility across possibilities (i.e., An updating of the knowledge toward the information provided by the new data) [@kruschke2018bayesian]. Suppose $\theta$ represents the parameters of the model and _D_ represents the observed data, then the basic form of the Bayes‘ theorem can be written as:
+
+
+\begin{equation}
+p(\theta|D) = \frac{p(D|\theta)p(\theta)}{p(D)}
+\end{equation}
+
+\vspace{5mm}
+
+where $p(\theta|D)$ is the __posterior probability distribution__ and it contains all the information about the model parameters with the data D taken into account. It is important to note that the posterior distribution is a compromise between the data we have at hand and the prior information. 
+
+$p(D| \theta)$ is the __likelihood function__ as it described the generative process of _D_ given the parameters $\theta$. Usually, researchers choose one of the member of the exponential family to describe the likelihood of the outcome. Sport scientists may be familiar with some of the members of this family like the normal distribution to describe a continuous outcome in linear regression, the binomial distribution for a binary outcome or the Poisson distribution for a count outcome in generalized linear regression. 
+
+$p(\theta)$ represents the __prior distribution__ and it contains all the information we have about the parameters $\theta$ from previous studies and/or opinion from an expert on the subject matter. Generally, three different classes of prior distributions can be distinguished related the amount of (un)certainty they incorporate to the model. _Non-informative_ priors (also known as vague prior) have been used commonly on parameters where the researcher has no knowledge about its possible values. However, they should be replaced by a more informative prior to improves inferences due to theorical and computational reasons. _Weakly informative priors_ encoded information to restrict the plausible range of values of a specific parameter but still leave a wide range of values to be cover [@gelmanBayesianDataAnalysis2013]. This class of prior distribution has been recently proposed as default prior when there is no information about a parameter of the model. A prior is considered to be _informative_ when a researcher includes all the available information in a prior distribution restricting considerably the parameter space. Prior distributions play a key role in BDA, especially when dealing with small sample size due to we can increase the precision of the estimated model parameters by excluding values that are not plausible through the use of informative priors [@zondervan-zwijnenburgWherePriorsCome2017]. Guidelines about the construction of informative priors and practical applications have been recently published in the field of phycological research [@koenig2021moving].
+
+Finally, $p(D)$ is the __marginal likelihood__ or “evidence” which is computed for by summing up (for discrete-valued variables) or integrate (for continuous-valued variables) the product between the likelihood of each value in $\theta$ ($\theta^*$) and its prior probability of occurrence. Therefore, the expression to calculate p(D) for continuous-valued variables is:
+
+\begin{equation}
+p(D) = \int_{\theta}p(D|\theta^*)p(\theta^*)d\theta^*
+\end{equation}
+
+\vspace{5mm}
+
+To illustrate how the Bayes‘ theorem works consider the Puranen-Orava test which is a clinical test commonly used for the diagnosis of hamstring tendinopathy and strain in athletes [@ahmad2013evaluation; @cacchio2012reliability]. This test has a sensitivity (i.e., probability of a positive diagnostic test when the athlete is indeed positive) of 76% and a specificity (i.e., probability of a positive diagnostic test when the athlete is indeed negative) of 82% [@reiman2013diagnostic]. The data obtained from the test _(D)_ can have two possible values: a positive result _(+)_ or negative _(-)_. In this case, the parameter $\theta$ represents the real presence in the athlete of hamstring strain _(HS)_ or not having hamstring strain _(HSC)_.  As an example, the prevalence of hamstring strain in elite football players is 40%, _p(HS)_, and the probability of not having hamstring strain is 60%, _p(HSC)_. Therefore, the probability of having a hamstring strain for an elite football player who is tested positive in this test is:
+
+$$
+\begin{aligned}
+p(HS|+) &= p(+|HS)p(HS|) / p(+)\\
+      &= 0.76*0.40 / p(+)
+\end{aligned}
+$$
+
+\vspace{5mm}
+
+According to equation 2 for discrete-valued variables, the marginal likelihood can be computed as:
+
+$$
+\begin{aligned}
+p(+) &= [p(+|HS) p(HS)] + [p(+|HSC) p(HSC)]\\
+&= [0.76*0.40] + [1 - p(-|HSC)*0.60]\\
+&= [0.76*0.40] + [(1 – 0.85)*0.60]\\
+&= 0.454 
+\end{aligned}
+$$
+
+\vspace{5mm}
+
+Finally, the value of the posterior is computed by substituting the result of equation 4 into equation 3: _p(HS|+)_ = 0.67. As conclusion, an elite football player who test positive in the Puranen-Orava test has a probability of 67% of having a hamstring strain.
+
+Although the previous example is the classic demonstration of Bayes‘ theorem, real world application of BDA are much complex for several reasons [@tso2021applying]: 1) the probability of the parameter is unknow in almost all the data analyses; 2) databases contain multiple variables and subjects; 3) More than one parameter has to be estimated simultaneously; 4) The marginal likelihood is usually too complex to be calculated analytically for continuous parameters due to the high number of combinations in the joint parameter space. Modern Bayesian software implement a sampling technique called Markov chain Monte Carlo (MCMC) (section 2.2) to solve the previous issues and compute a representation of the posterior distribution for the parameters of the statistical model. Therefore, real world estimation of parameters using BDA are calculated with the following equation:
+
+\begin{equation}
+p(\theta|y) \propto p(y| \theta) p(\theta)
+\end{equation}
+
+\vspace{5mm}
+
+where the posterior probability distribution is _proportional_ to the likelihood function times the prior distribution.  This means that, from a practical point of view, scientists have to specify the likelihood function of the data and the prior distributions on the parameters to compute the posterior distribution.
+
+## __2.2. Markov chain Monte Carlo methods__
+This method is the combination of two different techniques, Markov Chains and Monte Carlo simulation [@gillBayesianMethodsSocial2014]. The former is a stochastic process (i.e., set of random quantities) where the probability of change to a new state at time t + 1 is dependent only of the current state of the process at time t and conditionally independent of the previous values. The latter is a powerful computational method used to generate independent random samples from a sampling distribution. This empirical samples could be used to summarize the distribution without using analytical calculations. Therefore, a MCMC is a process where random samples are drawn sequentially from the approximate posterior distribution of each model parameter simultaneously. At each step of the sequence, the algorithm corrects the draws using the Markov property of the chain to better approximate the posterior distribution. The key point is that if we run the chain long enough it will converge to a stationary posterior distribution [@gelmanBayesianDataAnalysis2013]. Metropolis-Hastings and Gibbs sampling are probably the most widely known algorithms implemented both in BUGS and JAGS [@lunnBUGSBookPractical2012]. Recently, a probabilistic programming language called Stan have been developed [@carpenter2017stan]. This software makes use of the No-U-Turn sampler, a variant of Hamiltonian Monte Carlo to compute the posterior distribution [@hoffmanNoUTurnSamplerAdaptively2014]. Hamiltonian Monte Carlo sampling have been showed to outperforms Metropolis and Gibbs sampling for complex multiparameter models [@monnahanFasterEstimationBayesian2017].
+
+### __2.2.1 Understanding MCMC methods: the Metropolis algorithm__
+
+Due to its simplicity and elegance to obtain samples from the posterior distribution in Bayesian statistics, we believe that the Metropolis algorithm (a special case of the Metropolis-Hastings algorithm) is the ideal starting point to understand how MCMC works. Broadly speaking, this algorithm performs a random walk along all the possible values of the parameter remaining longer on those values with higher posterior distribution. As an example, let assume that our target distribution is $\theta \sim Normal(10, 1)$. This means that, if we run the algorithm long enough, then the samples obtained from the Markov chain will converge in $\theta$. The main steps of the Metropolis algorithm are:: 
+
+1. Initialize the algorithm within the range of values of $\theta$. In this examples, $\theta$ is a continuous parameter so $\theta_{1}$ could be any real number. Lets say $\theta_{1} = 0$.
+
+2. A jump is proposed within the range of values of $\theta$ randomly (hence the name random walk). To do this, we will add or subtract a number to the current position of $\theta$. The simplest way to generate a new position is to obtain a random number form a stardardized normal distribution so the increase/decease in the position will be given by $\Delta\theta \sim Normal(0,1)$. Therefore, the proposed position will be
+$\theta_{proposed} = \theta_{current} + \Delta\theta$.
+
+3. The probability of accepting the proposed move is calculated. Recall that the algorithm always wants to move to parameter values of higher posterior probability distribution, so if the proposed position is higher than the current one, then the movement must be accepted. Conversely, if the proposed values is lower then the movement is accepted probabilistically. A random value is drawn from a uniform distribution [0, 1] and if the value obtained is less than the proposed value, then the moment is accepted. Otherwise, the proposed movement is rejected and the algorithm will remain one more iteration in the current position. The probability of accepting the proposed move is given by:
+
+$$
+p_{accept} = min(1, \frac{P(\theta_{proposed})}{P(\theta_{current})})
+$$
+\vspace{5mm}
+
+Where $P(\theta)$ is the probability density of the target distribution at position $\theta$. When $P(\theta_{proposed})$ is higher than $P(\theta_{current})$ then the value of $p_{accept} = 1$ and therefore the proposed move is always accepted. We are going to code the algorithm in R, run it for 10,000 iterations, store the results and display it graphically:
+
+```{r, echo=T}
+# Initialize the algorithm 
+theta_init <- 0
+# Number of iterations
+n_iterations <- 10^4
+# Vector to store the results
+theta <- rep(0,n_iterations)
+# First value of the vector is the init
+theta[1] <- theta_init
+
+# Run the algorithm
+for(i in 2:n_iterations){
+  # Store the result at every iteration
+  theta_current <- theta[i-1]
+  # Propose a move
+  theta_proposed <- theta_current + rnorm(1, mean = 0, sd = 1)
+  # Probability of accept the move
+  p_accept <- min(1, dnorm(x = theta_proposed, 
+                               mean = 10, 
+                               sd = 1) / dnorm(x = theta_current, 
+                                                mean = 10, 
+                                                sd = 1))
+  
+  # Generates a random value form Uniform(0,1)
+  accept_value <- runif(1)
+  # Accept or reject the proposed move
+if(accept_value < p_accept){
+    theta[i] <- theta_proposed     
+  } else {
+    theta[i] <- theta_current        
+  }
+}
+
+```
+\vspace{5mm}
+
+INSERT FIGURE 1 HERE
+
+The Metropolis algorithm has worked for this simple example (Figure 1). However, in higher dimensional and complex modeling situations, it has a computational limitation and it often takes too long to get an image of the posterior distribution of the parameters. 
+
+### __2.2.2. Advanced MCMC: the Hamiltonian Monte Carlo algorithm__
+
+Hamiltonian Monte Carlo is a more complex algorithm that uses the gradient (i.e. the direction in which the distribution increases) of the log posterior to direct the Markov chain towards regions of higher posterior density [@thomas2021learning]. Suppose $P(\theta)$ is the target distribution and $-logP(\theta)$ has the shape of a reverse bell. To generate samples in regions of high posterior density, the algorithm needs to obtain samples corresponding to low values of $-logP(\theta)$. The moves of the algorithm mimics a marble moving from one side of a valley to other, remaining longer at the bottom of the valley (lower values) and occasionally at the ends (higher values). In physics, such movements are described as a Hamiltonian system where the horizontal and vertical moves are dictated by $\theta$ and $p$, where $p$ is known as the _momentum_ variable. 
+
+In this algorithm, both $\theta$ and $p$ are sampled together and the proposed jump for $\theta$ is determined largely by $p$. This simulation is carried out over time through the _Hamiltonian equations_. Another algorithm called the leapfrog method is used to solve these equations efficiently. This algorithm has 2 important tuning parameters L, the number of iterations of the leapfrog method or the number of steps, and $\epsilon$ the step size of every iteration for $\theta$ and $p$. These parameters control how $\theta$ and $p$ are both updated so if they are not setting correctly the algorithm could lead to erroneous proposal distributions. As an example, suppose we generate 100 samples from a bivariate Normal distribution $z \sim Normal(\mu, \Sigma)$:
+
+$$
+\begin{aligned}
+\mu = [0,0] \\
+\Sigma = \begin{bmatrix}1 & 0 \\
+0 & 1
+\end{bmatrix}
+\end{aligned}
+$$
+\vspace{5mm}
+
+Then, we are going to sample 5 points by setting L = 10 leapfrog steps and the step size $\epsilon$ = 0.03. The algorithm begins at the black diamond (step 0) and continues with random direction and _momentum_. The red dots represent the leapfrog steps while the width of the blue line displays the total kinetic energy at each step (Figure 2). If we run the algorithm long enough we will get an excellent representation of the posterior distribution for variable z.
+
+INSERT FIGURE 2 HERE
+
+At this point is when the No-U-Turn sampler implemented by Stan prevent inefficiencies in this algorithm. The main steps of the Hamiltonian Monte Carlo algorithm are too technical for an introduction to BDA so interested readers are referred to @thomas2021learning for a detail description and @gelmanBayesianDataAnalysis2013 and @mcelreathStatisticalRethinkingBayesian2020 to get an implementation in R code.
+
+MCMC methods are implemented by default in the Bayesian software so researchers do not have to worry about manually code it. However, it is essential to assess the representativeness of the posterior distribution and that the estimates of central tendency and limits are accurate and stable using numerical and graphical convergence diagnostics [@kruschkeDoingBayesianData2014].
+
+## __2.3. Bayesian data analysis workflow__
+
+There is a concern about the lack of reproducibility and efficiency in scientific research. The improvement of statistical and methodological practices is one of the proposed measures to optimize the scientific process [@munafo2017manifesto]. In this sense, BDA could lead to erroneous conclusion if it is not use properly. Therefore, several recognized authors have proposed a workflow specific for BDA which includes the steps of model building, checking, inference and reporting. Two of these checklists are the _when to Worry and how to Avoid the Misuse of Bayesian Statistics_ (WAMBS-v2) [@van2021bayesian] and the _Bayesian analysis reporting guidelines_ (BARG) [@kruschke2021bayesian]. Based on the aforementioned workflow guidelines, we are going to summarize the key steps of BDA along with some practical considerations.
+
+### _2.3.1. Gather prior information_
+
+BDA starts even before analyzing the database. Researchers can use the results reported in previous studies to get an idea of the possible values that parameters of interest may have. These values can be incorporated to our analysis via prior distributions and thus exclude values that are not possible to reach. Therefore, to include informative prior in our model is going to provide us the possibility of increase the precision of the result even if the sample size is small. If previous information is not available maybe researchers are able to specify the limit of the parameter space. Some practical guidelines to construct informative priors are [@zondervan-zwijnenburgWherePriorsCome2017]: 1) research in high quality scientific literature and ask experts on the subject matter; 2) to use a good method to gather information systematically; 3) to specify where you got the information and 4) always visualize the prior distribution.
+
+### _2.3.2. Definition of the statistical model_
+
+BDA involves the formulation of a full probability model starting from the likelihood function of the data to the prior distribution of the parameters. This mathematical formulation of the model where the values of some parameters depend on the values of other parameters is known as __hierarchical modeling__ and represent the __parametization__ of the model. Consider the following example with one outcome _y_ and two predictor variables ($x_{1}$ and $x_{2}$):
+
+$$
+\begin{aligned}
+y_{i} &\sim \mathrm{Normal}(\mu_{i}, \sigma) \\
+\mu_{i} &= \alpha_{} + \beta_{1} x_{1[i]} + \beta_{2} x_{2[i]} \\
+\alpha &\sim \mathrm{Normal}(\mu_{\alpha}, \sigma_{\alpha}) \\
+\beta_{1} &\sim \mathrm{Normal}(\mu_{\beta1}, \sigma_{\beta1}) \\
+\beta_{2} &\sim \mathrm{Normal}(\mu_{\beta2}, \sigma_{\beta2}) \\
+\sigma &\sim \mathrm{HalfCauchy}(\mu_{\sigma}, \sigma_{\sigma}) \\
+\end{aligned}
+$$
+\vspace{5mm}
+
+This formulation is the classical linear model where every observation of the outcome variable _y_ is assumed to be distributed according to a Gaussian probability distribution with mean $\mu$ and standard deviation $\sigma$. Additionally, the mean $\mu$ is assumed to be equals a linear combination of the parameters $\alpha$ (i.e., the intercept), the coefficients of $x_{1}$ ($\beta_{1}$) and $x_{2}$ ($\beta_{2}$). The novel part is that prior probability distribution has been set on the model parameters $\alpha$, $\beta_{1}$, $\beta_{2}$ and $\sigma$. In fact, these priori distributions also have parameters (known as __hyperparameters__) that are also estimated from the data.
+
+### _2.3.3. Model checking_
+
+Two key steps must be considered: Markov chain behavior checking and predictive checking. The most common method to check the behavior Markov chain is by visualizing the one-dimensional __trace plots__. These plots display the value of a parameter at each iteration of the Markov chain on the y axis against the iteration number on the x axis [@van2021bayesian]. We should look for 3 characteristics in a trace plot: 1) stationary, the mean value of the chain is stable during all the iterations; 2) good mixing, the chain fully explores the posterior distribution very quickly, and 3) Convergence, multiple independent chains stick around the same region of high probability [@mcelreathStatisticalRethinkingBayesian2020]. Additionally, The __potential scale reduction factor__ ($\hat{R}$) and the __effective sample size__ (ESS) are probably the numerical converge diagnostics most used in the Bayesian software. $\hat{R}$ is a measure of how much variance there is between the chains relative to how much variance there is within chains and its value is 1.0 the chains are fully converged or greater if they are not converged to a common distribution. ESS is a measure of how much independent information there is in autocorrelated chains. Recently, an improved version of these numerical diagnostics has been developed and implemented in the probabilistic programming language Stan [@vehtariRankNormalizationFoldingLocalization2021]. Stan output reports for every parameter estimated the maximum of rank normalized $split-\hat{R}$ and rank normalized $folded-split-\hat{R}$ which work for thick tailed distributions and is sensitive also to differences in scale. Moreover, the bulk effective sample size (bulk-ESS) and tail effective sample size (tail-ESS) are reported. The former informs about the sampling efficiency in the bulk of the distribution (related to efficiency of mean and median estimates) whereas the latter is a measure for sampling efficiency in the tails of the distribution (related to efficiency of variance and tail quantile estimate). It is recommended from a practical point of view to run at least four chains by default to estimate the posterior distribution of model parameters using MCMC and use 1.01 (or lower) and 400 (or greater) as thresholds for $\hat{R}$ and ESS respectively to trust in the posterior distribution estimated. 
+
+Regarding predictive checking, it is a method to assess how similar is the observed data with the data generated under the fitted model. This is possible by simulating values from the joint predictive distribution and comparing these samples with the observed data [@gelmanBayesianDataAnalysis2013]. In this sense, __prior predictive checking__ assess that the prior distributions defined in the model really generates simulated data (from the prior predictive distribution) according to the prior knowledge _before observing the data_ while __posterior predictive checking__ is used to check whether the simulated data (from the posterior predictive distribution) resemble the observed data _after observing the data_ [@kruschke2021bayesian; @van2021bayesian] Therefore, any deviation from true prior knowledge and/or data generating process could be considered a model misfit and a reformulation of the model should be performed. Posterior predictive checks can be also done numerically and with model comparison purpose as we explain in section 2.3.4.
+
+### _2.3.4. Model comparison and predictive accuracy_
+
+Once the model is fitted sport researchers assess how well the model fit to the sample. Probably, the most common measure of goodness-of-fit is $R^2$ or “variance explained”. This measure has the problem that it increases when more predictors are added to the model even when the variables you add are random numbers. Moreover, while models with many parameters fit the data better, they tend to _overfit_ more than simple models. __Overfitting__ occurs when the model learns too much from the sample which leads to poor out-of-sample predictions. In contrasts, when a model has too few parameters, they are inaccurate both within and out-of-sample producing a statistical error called __underfitting__. To deal with the overfitting/underfitting dichotomy we can use two different approaches: cross-validation and information criteria. 
+
+The first approach consists basically on leave out a small part of our sample to test the model´s predictive accuracy. Therefore, the sample is divided into chunks (i.e., folds) which the statistical model predicts one by one using the remaining chunks of the sample. Then, an average score of the out-of-sample accuracy if obtained. There is a special cross-validation method for Bayesian models called the __Pareto smoothed importance sampling cross-validation__ (PSIS-LOO) to estimate the model´s out of sample accuracy [@vehtari2017practical]. This method computes the __expected log pointwise predictive density__ which it is a useful measure to compare models and the __Pareto _k_ diagnostics__ which informs us about the reliability of the estimate by pointing to influential observations. Specifically, those data points associated with a _k_ value higher than 0.7 are supposed to have a negative on PSIS-LOO score. A difference less than 4 in the expected log pointwise predictive density is considered small from a practical point of view when comparing models with a number of observations larger than 100.
+On the other hand, an information criterion is an estimate of the relative out-of-sample divergence. Thus, the model with a smaller deviance has better fit when comparing several models. The __widely applicable information criterion__ (WAIC) is an information criterion that is invariant to parametrization, it uses entire posterior distribution and approximates the deviance for new samples [@mcelreathStatisticalRethinkingBayesian2020; @watanabeAsymptoticEquivalenceBayes2010].
+
+### _2.3.5. Posterior probability distribution analysis and hypothesis testing_
+
+Sport scientists maybe know the model of the section 2.2 as ANCOVA where the interest resides in estimate mean difference among groups by using some kind of planned contrasts or post-hoc analysis while adjusting the model with a continuous variable. In this way, the decision of whether or not there is a statistical significant difference among training groups is based on the computation of a _p_-value and if it is less than an established threshold (traditionally if _p_ < 0.05). However, several publications have alarmed about the misuse and misinterpretation of _p_-values as an index of significance [@amrheinScientistsRiseStatistical2019; @greenland2016statistical]. As an alternative, Bayesian inference offers three different overlapping approaches to analyze the presence or absence of an effect: the __Region of Practical Equivalence__ (ROPE)-based indices, posterior indices and __Bayes factors__ (BF)  [@makowskiIndicesEffectExistence2019].
+ 
+The first approach uses an interval called a __credible interval__ (CrI) which define a percentage of values that are found in the central portion of the posterior distribution. Although its aim is similar, CrI should not be confused with confidence intervals since its computation and meaning are different. A special CrI is the __highest-density interval__ (HDI) which summarizes the uncertainty of the parameter estimated in such way that any parameter value inside a 95%HDI are the 95% most credible values. Then, it is calculated what percentage of the HDI falls inside a ROPE that represent a range of parameter values that equivalent to the null value for practical purposes [@kruschke2018rejecting]. Thus, if for example the 95%HDI falls completely inside the ROPE means that the most credible values of the parameter a practically equivalent to the null value. An obvious drawback of this method is that the ROPE has had to be established by the researcher.
+Posterior indices indicate objective characteristics of the posterior distribution like the probability that a estimated parameter is strictly positive or negative. In fact, this index called __probability of direction__  (pd) has been recome3nded recently as an objective index of effect _existence_ for its simple interpretation and numeric proximity with the _p_-values [@makowskiIndicesEffectExistence2019].
+The third approach is based on the comparison of two probability distributions: A prior distribution where all the probability is allocated over the null value (or ROPE), and a posterior distribution where the probability mass has shifted away from the null value once the observed data have been taken into account. Therefore, a BF indicates the degree to which the posterior distribution has move further away or closer to the null value, or in other words, it tells us how much the data is consistent with one hypothesis compared to other. A BF can only be a positive number and its interpretation ranges from “no evidence” (BF = 1) to “extreme” (BF > 100, extreme evidence for H1; BF < 1/100, extreme evidence for H0) [@leeBayesianCognitiveModeling2014].
+
+It is important to note some advantages of using these approaches to perform post-hoc analysis: 1) there is no need to correct for multiple tests due to type I error rate inflation due to BDA does not rely on sampling distributions; 2) Conversely to frequentists statistics results, the interpretation of a HDI or pd is intuitive; and 3) BF assess both evidence in favor or against an effect (in contrasts to _p_-values).
+
+### _2.3.6. Sensitivity analysis_
+
+In a BDA context, a sensitivity analysis means to assess how sensible is the estimated posterior distribution of the parameters to the choice of priors. This analysis is especially important when analyzing small datasets with informative priors however it should be performed regardless of the amount of information provided by the prior distributions and the sample size [@kruschke2021bayesian]. Although there is no consensus about the way to assess differences among posterior distributions from different priors, we are going to follow the recommendations of @kruschke2021bayesian  who suggest to plot density curves along with numerical tables showing the central tendency and credible interval of the estimated parameters.
+
+# __3. Applied Bayesian data analysis example__
+
+We are going to consider as an example the study of @humberstone-goughComparisonLiveHigh2013 to illustrate the aforementioned workflow. Briefly, they compared the effects of three different training regimens “Live High Training Low” altitude training (LHTL, n = 7), “Intermittent Hypoxic Exposure” (IHE, n = 7), and “Placebo” (n = 7) on different variables using a randomized control trial design. For the sake of simplicity, the difference in the concentration of hemoglobin mass in grams (Hbmass) is going to be the outcome of our example while the percentage change in weekly training load (ChangeWtr, %) and training group membership (Group, three levels: LHTL, IHE and Placebo) are the predictor variables. Our interest as researchers lies in analyzing differences among the training groups. 
+
+A box plot of the Hbmass by group show us that the outcome follows a Gaussian distribution in each group, the presence of an outlier in the IHE group and a possible effect of group membership (figure 3).
+
+INSERT FIGURE 3 HERE
+```{r}
+# Read Mergensen et al. database
+db <- as_tibble(read.csv2(file = "db.csv",
+                          header = T,
+                          dec = "."))
+
+# Hemoglobin database
+dbHb <- db %>%
+  select(ID, Group, ChangeWtr, HbmassPost, HbmassPre) %>%                  # Select variables for analysis
+  mutate(HMabs = HbmassPost - HbmassPre,                                   # Compute Absolute values
+         Group = factor(Group, levels = c("Placebo", "IHE", "LHTL"))) %>%  # Set Placebo level as reference
+  na.omit() 
+```
+
+\vspace{5mm}
+
+There are only 7 participants in each group so prior information about the parameters can help us to get a reliable estimate. In this case, an informative prior about the effect of LHTL was placed based on a meta-analysis about training regimens on Hbmass [@gore2013altitude]. 
+
+Note that this data has been already analyzed using Bayesian methods by  @mengersenBayesianEstimationSmall2016. However, throughout this example we are going to perform BDA showing the computer code at every step of the analysis using a more accessible software for sports scientists in addition to following a modern approach of analysis.
+
+# __3.1. Model definition__
+We assumed that the Hbmass is distributed according a Gaussian distribution, where its mean ($\mu$) is model as a linear combination of the effect of ChangeWtr and Group, while its standard deviation ($\sigma$) follow a half-Student´s T distribution (only positive values of the distribution). Therefore, the statistical model can be described as follow:
+
+$$
+\begin{aligned}
+Hbmass_{i} &\sim Normal(\mu_{i}, \sigma) \ [likelihood] \\
+\mu_{i} &= \alpha + \beta_{1}ChangeWtr +  \beta_{2}Group \ [linear \ model] \\
+\alpha &\sim StudentT(12, 7, 3)  \ [\alpha \ prior] \\
+\beta_{1} &\sim Normal(0, 2) \ [\beta_{1} \ prior] \\
+\beta_{2-IHE} &\sim Normal(0, 2) \ [\beta_{2-IHE} \ prior] \\
+\beta_{2-LHTL} &\sim Normal(2.6, 0.5) \ [\beta_{2-LHTL} \ prior] \\
+\sigma &\sim Half-StudentT(0, 15, 3)  \ [\sigma \ prior] \\
+\end{aligned}
+$$
+
+\vspace{5mm}
+
+Under this model definition, the intercept ($\alpha$) of the regression model represents the average $Hbmass$ in the placebo group whereas $\beta_{2-IHE}$ and $\beta_{2-LHTL}$ represents the difference between placebo and IHE and between placebo and LHTL, respectively.  
+
+Before fitting the model, It is a good practice to plot prior distribution to check the range of plausible values for each parameter (Figure 4).
+
+INSERT FIGURE 4 HERE
+
+# __3.2. Prior predictive checking__
+Once the model is defined, the prior predictive distribution can be computed to check whether the model and prior distributions are consistent with domain expertise removing extreme but not impossible parameters values (section 2.3.3.). Hence, adding information via prior distribution allows the Bayesian computation and interpretation of the parameters estimated. The function `prior()` allow to define prior distribution on model parameters. Prior predictive distribution can be computed via brms by using the function `brm()` and setting the argument `sample_prior = “only”`. The function `brm()` can be considered the main function of the package since is the one used to fit the models. Consider special attention to arguments of the function related to the MCMC, `warmup` to set the number of iterations used by the MCMC algorithm to figure out how to explore the posterior distribution efficiently; `chains` to specify the number of Markov chains and `iter` to set the number of iterations per chain. In our example, we create an object called `bmod1_prior` which will store all the information about the model. Additional arguments like `data` to select a data frame that contains all the variables in the model; `family` to set the likelihood function of the outcome and `prior` to use the prior distribution on parameters previously defined, are mandatory Note that our model assume that the outcome follows a Gaussian distribution with an identity link function `(family = gaussian(link = “identity”))`. 
+
+```{r, echo=TRUE, results='hide'}
+bmod1Priors <- c(prior(normal(0, 2), class = "b", coef = "ChangeWtr"),    
+                 prior(normal(0, 2), class = "b", coef = "GroupIHE"),     
+                 prior(normal(2.6, 0.5), class = "b", coef = "GroupLHTL"), 
+                 prior(normal(0, 2), class = "b", coef = "Intercept"),  
+                 prior(student_t(3, 0, 15), class = "sigma")) 
+
+bmod1_prior <- brm(formula =  HMabs ~ 0 + Intercept + ChangeWtr + Group,
+                data = dbHb,
+                family = gaussian(link = "identity"),
+                warmup = 1000,
+                iter = 2000,
+                chains = 4,
+                seed = 1234,
+                prior = bmod1Priors,                     
+                sample_prior = c("only"))                
+```
+
+\vspace{5mm}
+
+After fitting the model, multiple draws can be computed from the prior predictive distribution by using the function `posterior_predict()`. In this case, we are going to simulate 50 draws:
+
+```{r, echo=T, eval=F, warning=FALSE}
+bmod1_prior %>%
+posterior_predict(draws = 50) %>%
+ppc_dens_overlay(y = dbHb$HMabs) +
+  	xlim(-750, 750)
+```
+
+Prior predictive distribution is showed in figure 5. In this figure $y$ represent the distribution of Hbmass and $y_{rep}$ the distribution of simulated sets using only information from prior distributions. Note that most of the distribution area is over the value 0 and values $\pm$ 100 g for Hbmass are very unlikely.
+
+INSERT FIGURE 5 HERE
+
+# _3.3. Model updating_
+Next, we are going to add the observed data to the model by changing the argument `sample_prior = “yes”`. Once brms fits the model we should check that the parameters have been estimated correctly (see section 2.2). the traceplot of each Markov chain used in the MCMC estimation and a histogram of the values estimated for every parameter (figure 6). These traceplot are concentrated around the estimated value for each parameter. Moreover, all the parameters have an $\hat{R}$ of 1 and both ESS > 400 so we can trust that these results have been obtained with accuracy (table 2). 
+
+```{r, echo=TRUE, results='hide'}
+bmod1 <- brm(formula =  HMabs ~ 0 + Intercept + ChangeWtr + Group,
+             data = dbHb,
+             family = gaussian(link = "identity"),
+             warmup = 1000,
+             iter = 2000,
+             chains = 4,
+             seed = 1234,
+             prior = bmod1Priors,                     
+             sample_prior = c("yes"))
+```
+
+\vspace{5mm}
+
+INSERT FIGURE 6 HERE
+
+# __3.4. Posterior predictive checking__
+We are going to simulate data sets ($y_{rep}$) to compare with the distribution of the observed data ($y$), like in section 3.2, but in this case the data is simulated from the posterior predictive distribution. Recall that this method is used to asses model adequacy. Figure 7 shows the posterior predictive distribution of our model. Look like the fit is reasonable but there is a high variation that it is not capture by model´s prediction.
+
+```{r, echo=TRUE, eval=F, warning=FALSE}
+ppc_dens_overlay(y = dbHb$HMabs, 
+         yrep = posterior_predict(bmod1, draws = 50)) +
+  xlim(-150, 150)
+```
+
+INSERT FIGURE 7 HERE
+
+# __3.5. Model selection__
+Figure 1 showed the presence of an outlier in IHE group so perhaps we could improve the model if we use a likelihood function that allows the presence of extreme values. This kind of method is commonly known as robust regression and makes use of the Student-t distribution. Like the Gaussian distribution, the Student-t distribution is defined by the mean $\mu$ and the scale $\sigma$ parameters, but it has also the shape parameter $\nu$ that controls the thick of the tails of the distribution. Robust regression can be easily performed using brms by changing the argument `family = student(link = identity)`. 
+
+```{r, echo=TRUE, results='hide'}
+bmod2 <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,	         
+        data = dbHb,
+        family = student(link = "identity"),
+        warmup = 1000,
+          iter = 2000,
+        chains = 4,
+          seed = 1234,
+         prior = bmod1Priors,              
+       sample_prior = "yes")
+```
+
+\vspace{5mm}
+
+Once the model is fitted, we can compare the predictive accuracy of both model (section 2.4). First, the PSIS-LOO is estimated for each model via `loo()` function setting the argument `save_psis = T` and then function `loo_compare()` is used to compare the estimates. This function computes pairwise comparisons between the model with the largest expected predictive density (first row, better accuracy). In our case, the difference can be considered insignificant due to the small numbers computed (table 2). Interestingly, the Gaussian model has better accuracy so we are going to use that model to perform contrasts.
+
+```{r, echo=TRUE, results='hide'}
+loo1 <- loo(bmod1, save_psis = TRUE)
+loo2 <- loo(bmod2, save_psis = TRUE)
+loo_compare(loo1, loo2)
+```
+
+\vspace{5mm}
+
+INSERT TABLE 1 HERE
+
+# __3.6. Posterior distribution analysis and hypothesis testing__
+To illustrate the approaches commented in section 2.3.5., we are going to analyze the effect of group membership on Hbmass by using both ROPE and Bayes factors approaches but independently. Readers must be aware that these approaches are not mutually exclusive and they could be used together to analyze the presence and significance of an effect [@makowskiIndicesEffectExistence2019].
+
+## _3.6.1. ROPE approach_
+As an example, we define a ROPE from -0.5 to 0.5 grams. This ROPE is the null value for practical purposes in our study. The percentage of the _full_ posterior distribution that lies inside this ROPE is going to be the decision rule [@kruschke2018rejecting]. If less than 2.5% of the full posterior distribution of the parameter lies outside the ROPE then the null hypothesis is "rejected". On the other hand, if more than 97.5% is inside the ROPE then the null is "accepted". The functions `describe_posterior()` and `equivalence_test` from the package _bayestestR_ calculate the percentage of the full posterior distribution inside the ROPE and perform a test for practical equivalence with these results [@makowski2019bayestestr]. The arguments of these functions allow to define the ROPE´s lower and upper bound (`rope_range` and `range`, respectively), the type of credible interval (`ci_method`) and the percentage of the credible interval to be evaluated inside the ROPE (`ci`). The probability of direction is also calculated as an index of _existence_ of the effect.
+
+```{r, echo=T, results='hide'}
+describe_posterior(bmod1, rope_range = c(-0.5, 0.5), ci_method = "HDI", ci = 1)
+equivalence_test(bmod1, range = c(-0.5, 0.5), ci = 1)
+```
+
+INSERT TABLE 2 HERE
+
+INSERT FIGURE 8 HERE
+
+We can conclude from these results that _the effect of LHTL training has a probability of 100% [pd] of being positive (mean = 2.66, 95%CrI[1.71, 3.59]) and significant (0.00% inside ROPE)_ (Table 2 and figure 8).
+
+## _3.6.2. Bayes factors approach_
+As an example of Bayes factors computation and interpretation, we are going to test a planned contrast (also known as a priori contrast) about mean differences. Formally, we could test three different null hypothesis regarding mean differences among the levels of the group variable:
+
+
+$$
+\begin{aligned}
+H_{0}^{1}&: \mu_{placebo} - \mu_{IHE} =  0  \\
+H_{0}^{2}&: \mu_{placebo} - \mu_{LHTL} =  0  \\
+H_{0}^{3}&: \mu_{IHE} - \mu_{LHTL} =  0 
+\end{aligned}
+$$ 
+\vspace{5mm}
+
+Where $H_{0}^{1}$ represent the null hypothesis for placebo VS IHE; $H_{0}^{2}$, placebo VS LHTL and $H_{0}^{3}$, IHE VS LHTL.
+
+These specific contrasts (i.e. pairwise differences) should be encoded as a character string by using the name of the model parameters. The function `hypothesis()` allows to perform multiple non-linear hypothesis test for model parameters. In our example, to test $H_{0}^{1}$ (`"Intercept = Intercept + GroupIHE"`), $H_{0}^{2}$ (`"Intercept = Intercept + GroupLHTL"`) and $H_{0}^{3}$ (`"Intercept + GroupIHE = Intercept + GroupLHTL"`) respectively we should use the following code: 
+
+```{r, echo=TRUE, results='hide'}
+hypothesis(bmod1, c("Intercept + GroupIHE = Intercept ",  
+                    "Intercept + GroupLHTL = Intercept ",             
+                    "Intercept + GroupIHE = Intercept + GroupLHTL")) 
+```
+
+\vspace{5mm}
+
+This function computes a Bayes factor between the hypothesis and its alternative and is expressed as $BF_{10}$, and for two-sided hypothesis the BF is computed via the Savage-Dickey density ratio method which is merely the ratio between the height of the posterior distribution and the height of the prior distribution at the point of interest [@wagenmakers2010bayesian]. This result refers to the evidence of $H_{1}$ (i.e., alternative hypothesis = significant difference) over $H_{0}$ (i.e., null hypothesis = no significant difference). For hypothesis 1, 2 and 3 the $BF_{10}$ is 1,05 , >100 and 0.91 respectively. This evidence can be classified as anecdotical for hypothesis 1 and 3 and extreme for hypothesis 2 (table 3). Additionally, we also computed a standardized effect size for mean differences called Cohen´d which can be calculated using the following formula:
+
+$$
+Cohen \ d = \frac{\mu_{1}- \mu_{2}}{\sqrt{\frac{\sigma_{1}^{2}+\sigma_{2}^{2}}{2}}}
+$$
+\vspace{5mm}
+
+where $\mu$ and $\sigma^{2}$ represents the mean and the variance of the groups to be compared.
+
+INSERT TABLE 3 HERE
+
+From the Bayes factor analysis we can report that _there is extreme evidence (BF > 100) supporting an effect of LHTL training group over placebo group (mean difference = 2.65, 95%CrI[0.60, 4.35], Cohen´d = 1.30)_ (table 2).
+
+# __3.7. Sensitivity analysis results__
+We refit the model setting non-informative priors on regression parameters to compare to each of our original priors and understand the impact of different priors on the posterior distribution. These non-informative priors were set as follow:
+
+$$
+\begin{aligned}
+\alpha &\sim Normal(0, 10^{5}) \\
+\beta_{1} &\sim Normal(0, 10^{5}) \\
+\beta_{2-IHE} &\sim Normal(0, 10^{5}) \\
+\beta_{2-LHTL} &\sim Normal(0, 10^{5}) \\
+\sigma &\sim Half-Normal(0, 10^{5}) \\
+\end{aligned}
+$$
+
+\vspace{5mm}
+
+After the model was refitted (named “bmod3”) with non-informative prior, we used the function  `sensitivity_analysis()` from the package _introbayes_ which compares the posterior densities of the selected parameters graphically and computing the percentage of deviation ((mean – original mean)/ original mean * 100) between the fitted models [@depaoli2020].
+
+```{r, echo=F, results='hide', eval=T}
+# Model with non-informative priors
+# Set non-informative priors
+bmod3Priors <- c(prior(normal(0, 10^5), class = "b", coef = "ChangeWtr"),
+                 prior(normal(0, 10^5), class = "b", coef = "GroupIHE"),
+                 prior(normal(0, 10^5), class = "b", coef = "GroupLHTL"),
+                 prior(normal(0, 10^5), class = "b", coef = "Intercept"),
+                 prior(normal(0, 10^5), class = "sigma"))
+
+
+bmod3 <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,
+             data = dbHb,
+             family = gaussian(link = "identity"),
+             warmup = 1000,
+             iter = 2000,
+             chains = 4,
+             seed = 1234,
+             prior = bmod3Priors,                   
+             sample_prior = "yes")
+```
+
+
+```{r, echo=TRUE, results='hide', eval=F}
+sens_analysis <- sensitivity_analysis(bmodels = list(original_model = bmod1,
+                                    alternative_prior = bmod3),
+                                    params = c("b_Intercept", "b_ChangeWtr",
+                                              "b_GroupIHE", "b_GroupLHTL",
+                                              "sigma"))
+```
+
+\vspace{5mm}
+
+INSERT TABLE 4 HERE
+
+INSERT FIGURE 9 HERE
+
+Sensitivity analysis showed _a high impact of prior distribution on the results obtained. Specifically, there is a significant effect on the posterior distributions of_ $\alpha$ _(-839%), on_ $\beta_{2-IHE}$ _(736%) and on_ $\beta_{2-LHTL}$ _(1058%). Additionally, the variance of the posterior distributions of_ $\alpha$, $\beta_{2-IHE}$ _and_ $\beta_{2-LHTL}$ _reduce drastically after incorporate the data into the model. Regarding the 90%HDI, zero is always inside the HDI for_ $\beta_{2-IHE}$ _and for_ $\beta_{2-LHTL}$ (table 4 and figure 9). 
+
+# __4. Conclusions__
+BDA offers a very interesting alternative for sport scientists who want to overcome the limitation of traditional statistics, especially those who need to analyze databases with low sample size. Obviously, there are lot of concepts and methods that have not been treated in this introduction. However, through this manuscript the basic concepts, benefits, workflow and a practical example are presented as a starting point for those who are interested in learn how to perform Bayesian inference.
+
+# __Acknowledgments__
+Different R packages have been used together with _brms_ to perform the analysis of this manuscript: _tidyverse_ and _ggpubr_ for data manipulation and plotting and _bayesplot_, _bayestestR_ and _loo_ for further analysis [@wickham2019welcome; @kassambara2020package; @gabry2017bayesplot; @vehtari2020loo; @makowski2019bayestestr].
+
+# References
+
+::: {#refs custom-style="Bibliography"}
+:::
