@@ -3,7 +3,6 @@
 library(tidyverse)
 library(tidybayes)
 library(brms)
-# library(introbayes)
 library(bayestestR)
 library(effsize)
 library(emmeans)
@@ -65,7 +64,7 @@ MC_1 <- Markov_chain_burn %>%
   ggplot(aes(x = position, y = theta)) +
   ylim(0, 15) +
   labs(y = expression(theta), x = "Number of chain steps (init)") +
-  geom_line(size = 1.2, colour="skyblue") +
+  geom_line(linewidth = 1.2, colour="skyblue") +
   theme_bw() +
   theme(panel.grid = element_blank())
 
@@ -73,7 +72,7 @@ MC_2 <-Markov_chain_optim %>%
   ggplot(aes(x = position, y = theta)) +
   ylim(0, 15) +
   labs(y = expression(theta), x = "Number of chain steps (final)") +
-  geom_line(size = 1.2, colour="skyblue") +
+  geom_line(linewidth = 1.2, colour="skyblue") +
   theme_bw() +
   theme(panel.grid = element_blank())
 
@@ -95,7 +94,7 @@ ggarrange(MC_1, MC_2, MC_3,
           nrow = 1)
 
 # ----------------------------------------------------------------------------
-#  2.2.2. Hamiltonian Monte Carlo Algorithm (McElreath, 2020)--------------------
+#  2.2.2. Hamiltonian Monte Carlo Algorithm (McElreath, 2020) --------------------
 # ----------------------------------------------------------------------------
 
 # U - neg-log-probability
@@ -165,26 +164,16 @@ HMC <- function(U, grad_U, epsilon, L, current_q){
 
 }
 
-# example
-# Store results of HMC
-Q <- list()
-# Initial value
-Q$q <- c(-0.1,0.2)
-# Step size
-epsilon <- 0.03
-# Number of steps
-L <- 11
-# Number of iterations
-n_iterations <- 4
-
-# data
+# test data
 set.seed(7)
 y <- rnorm(50)
 x <- rnorm(50)
 y <- as.numeric(scale(y))
 x <- as.numeric(scale(x))
 
-# Simulate data from a bivariate normal distribution
+## Plot a multivariate normal distribution
+set.seed(7)
+
 # Target parameters for univariate normal distributions
 rho <- 0.0
 mu1 <- 0; s1 <- 1
@@ -198,9 +187,8 @@ sigma <- matrix(c(s1^2, s1*s2*rho, s1*s2*rho, s2^2), 2) # Covariance matrix
 data.grid <- expand.grid(s.1 = seq(-0.4, 0.4, length.out=200), s.2 = seq(-0.4, 0.4, length.out=200))
 
 # Add density
-q1_samp = cbind(data.grid, prob = mvtnorm::dmvnorm(data.grid, mean = mu, sigma=sigma))
+q1_samp <- cbind(data.grid, prob = mvtnorm::dmvnorm(data.grid, mean = mu, sigma=sigma))
 
-# Base plot
 HMC_plot <- ggplot() +
   geom_contour(data=q1_samp,aes(x=s.1,y=s.2,z=prob),
                col="black",
@@ -217,6 +205,9 @@ HMC_plot <- ggplot() +
         axis.text = element_text(size = 10),
         axis.title = element_text(size = 14),
         legend.position="none")
+
+# Base plot HMC
+HMC_plot
 
 # Helper function to create a data frame
 # for plotting segments in ggplot
@@ -252,8 +243,20 @@ create_df_segments <- function(Q){
   return(df_seg)
 }
 
+# example
+# Store results of HMC
+Q <- list()
+# Initial value
+Q$q <- c(-0.1,0.2)
+# Step size
+step <- 0.03
+# Number of steps
+L <- 11
+# Number of iterations
+n_samples <- 4
+
 # Add HMC samples to base plot
-for (i in 1:n_iterations) {
+for (i in 1:n_samples) {
 
   Q <- HMC(U, U_gradient, step, L, Q$q)
 
@@ -279,26 +282,30 @@ for (i in 1:n_iterations) {
   }
 }
 
-# Re-drawn the points
-df_points <- tibble(
-  x = c(0.05676668, 0.26030178, -0.06749449, -0.1410822, 0.34581499),
-  y = c(0.10346451, 0.04858683, -0.23142964, -0.3517979, 0.01544388)
-)
+# Final plot - HMC
+HMC_plot_final
 
-HMC_plot_final <- HMC_plot_final +
-  geom_point(aes(x = -0.1, y = 0.2), shape = 18, size = 7, col = "black") +
-  geom_point(data = df_points, aes(x = x, y = y), col = "black",
-             size = 5)
+# FIGURE 2 - Re-drawn the points & Add number to sample points
+# Re-drawn the points
+#df_points <- tibble(
+#  x = c(0.05676668, 0.26030178, -0.06749449, -0.1410822, 0.34581499),
+#  y = c(0.10346451, 0.04858683, -0.23142964, -0.3517979, 0.01544388)
+#)
+#
+# HMC_plot_final <- HMC_plot_final +
+#  geom_point(aes(x = -0.1, y = 0.2), shape = 18, size = 7, col = "black") +
+#  geom_point(data = df_points, aes(x = x, y = y), col = "black",
+#             size = 5)
 
 # Add number to sample points
 # Figure 2
-HMC_plot_final <- HMC_plot_final +
-  annotate("text", x = -0.12, y = 0.24, label = "0", size = 5) +
-  annotate("text", x = 0.07, y = 0.14, label = "1", size = 5) +
-  annotate("text", x = 0.260, y = 0.1, label = "2", size = 5) +
-  annotate("text", x = -0.09, y = -0.20, label = "3", size = 5) +
-  annotate("text", x = -0.115, y = -0.38, label = "4", size = 5) +
-  annotate("text", x = 0.345, y = -0.035, label = "5", size = 5)
+# HMC_plot_final <- HMC_plot_final +
+#  annotate("text", x = -0.12, y = 0.24, label = "0", size = 5) +
+#  annotate("text", x = 0.07, y = 0.14, label = "1", size = 5) +
+#  annotate("text", x = 0.260, y = 0.1, label = "2", size = 5) +
+#  annotate("text", x = -0.09, y = -0.20, label = "3", size = 5) +
+#  annotate("text", x = -0.115, y = -0.38, label = "4", size = 5) +
+#  annotate("text", x = 0.345, y = -0.035, label = "5", size = 5)
 
 # ----------------------------------------------------------------------------
 #  3. Applied Bayesian data analysis example   -------------------------------
@@ -463,20 +470,21 @@ bmod1_prior <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,
 # summary(bmod1PPd)
 
 # Check priors after fit the model
-prior_summary(bmod1PPd)
+prior_summary(bmod1_prior)
 
 # get parameters names
-parnames(bmod1PPd)
+variables(bmod1_prior)
 
 # Set brightblue scheme
 color_scheme_set("brightblue")
 
 # Prior predictive distribution
-# Figuree 5
+# Figure 5
 bmod1_prior %>%
   posterior_predict(draws = 50) %>%
   ppc_dens_overlay(y = dbHb$HMabs) +
-  xlim(-500, 500)
+  xlim(-500, 500) +
+  theme_bw()
 
 # Mergensen et al. (2015) model with weakly and informative priors on population effects
 bmod1 <- brm(formula =  HMabs ~ 0 + Intercept + ChangeWtr + Group,
@@ -501,10 +509,11 @@ dev.off()
 # Posterior Predictive Distribution
 # Figure 7
 ppc_dens_overlay(y = dbHb$HMabs, yrep = posterior_predict(bmod1, draws = 50)) +
-  xlim(-150, 150)
+  xlim(-150, 150) +
+  theme_bw()
 
 ## Model selection
-bmod2_1 <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,
+bmod2 <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,
              data = dbHb,
              family = student(link = "identity"),
              warmup = 1000,
@@ -520,7 +529,7 @@ bmod2_1 <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,
 loo1 <- loo(bmod1, save_psis = TRUE)
 # print(loo1)
 # plot(loo1, label_points = T)
-loo2_1 <- loo(bmod2, save_psis = TRUE)
+loo2 <- loo(bmod2, save_psis = TRUE)
 # Table 1
 loo_compare(loo1, loo2)
 
@@ -531,7 +540,7 @@ equivalence_test(bmod1, range = c(-0.5, 0.5), ci = 1)
 # Figure 8
 bmod1 %>%
   gather_draws(b_Intercept, b_GroupIHE, b_GroupLHTL) %>%
-  ggplot(aes(y = .variable, x = .value, fill = stat(abs(x) < 0.5))) +
+  ggplot(aes(y = .variable, x = .value, fill = after_stat(abs(x) < 0.5))) +
   stat_halfeye() +
   geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +
   scale_fill_manual(values = c("skyblue", "gray80")) +
@@ -569,7 +578,7 @@ tbl_a <- hypothesis(bmod1, c("Intercept + GroupIHE = Intercept ",  # IHE VS Plac
                             "Intercept + GroupIHE = Intercept + GroupLHTL"), # IHE VS LHTL
                    alpha = 0.00) # Full posterior distribution
 
- bmod1_draws <- as_draws_df(bmod1)
+bmod1_draws <- as_draws_df(bmod1)
 bmod1_df <- tibble(Placebo = bmod1_draws$b_Intercept,
                    IHE = bmod1_draws$b_Intercept + bmod1_draws$b_GroupIHE,
                    LHTL = bmod1_draws$b_Intercept + bmod1_draws$b_GroupLHTL)
@@ -624,6 +633,11 @@ bmod3 <- brm(formula = HMabs ~ 0 + Intercept + ChangeWtr + Group,
 
 
 # Sensitivity analysis ------------------------------------------------------
+
+# Sensitivity analysis function
+# https://github.com/JorgeDelro/sensitivity_analysis
+source("Bayes_sensitivity_analysis.R")
+
 sensitivity_results <- sensitivity_analysis(bmodels = list(original_model = bmod1,
                                                   alternative_prior = bmod3),
                                    params = c("b_Intercept", "b_ChangeWtr",
@@ -656,4 +670,5 @@ ggarrange(
     scale_fill_manual(values=c("#FFCCCB", "skyblue")),
   nrow = 3,
   ncol = 2)
+
 
